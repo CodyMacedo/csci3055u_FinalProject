@@ -1,44 +1,66 @@
 #lang racket
-(require racket/draw)
+(require "graph.rkt")
+(require "visual.rkt")
 
-(define (dijkstra origin destination graph)
-  (define (update x)
-    (begin
-      (set! new-dist (+ (dist-between n x graph)
-                         (dist-info-node (get-info-node i n))))
-      (when (< new-dist (dist-info-node (get-info-node i v)))
-        (update-previous-dist-node i v new-dist n))))
+;data structure for a node
+(define-struct node (cost path) #:transparent)
 
-(define (get-info-node i n)
-  (define (get-info-node-aux i n cont)
-    (if (equal? n (vector-ref (no-info-no i) cont))
-        (vector-ref i cont)
-        (get-info-node-aux i n (+ cont 1))))
-  (get-info-node-aux i n 0))
+;the main algorithm
+(define (dijkstra graph start finish)
+
+  ;set initial cost table
+  (define initial (costs-hash graph start))
+
+  ;recursively go through all nodes, building the cost table along the way
+  (define (solve-dijkstra current remaining costs-table)
+    (if (equal? current finish) 
+        
+        costs-table 
+        
+        (let* ([current-node      (hash-ref costs-table current)]
+               [current-node-cost (node-cost current-node)]
+               [neighbours        (hash-ref remaining current)])
+          
+          (define-values [costs-table-new current-new _]
+            (for/fold ([costs costs-table]
+                       [min-neighbour #f]
+                       [min-val +inf.0])
+                      ([n neighbours]
+                       #:when (hash-has-key? remaining (first n)))
+              
+              (define-values [neighbour-name edge-cost] (values (first n) (second n))) 
+              
+              (define new-cost-neighbour (+ current-node-cost edge-cost))
+              (define prev-cost-neighbour (node-cost (hash-ref costs neighbour-name)))
+              
+              (define-values [min-neighbour-new min-val-new]
+                (if (< new-cost-neighbour min-val)
+                    (values (first n) new-cost-neighbour)
+                    (values min-neighbour min-val)))
+              
+              (define new-costs
+                (if (< new-cost-neighbour prev-cost-neighbour)
+                    (hash-update costs 
+                                 neighbour-name
+                                 (lambda (nd) 
+                                   (struct-copy node nd 
+                                                (cost new-cost-neighbour)
+                                                (path (cons current (node-path current-node))))))
+                    costs))
+              
+              (values new-costs min-neighbour-new min-val-new)))
+          
+          (solve-dijkstra current-new 
+                          (hash-remove remaining current) 
+                          costs-table-new)
+          )))
+  (solve-dijkstra start graph initial)) 
 
 
-(define (dist-info-node i)
-  (vector-ref i 1))
-
-   (define new-dist 0)
-
-(define (update-previous-dist-node! i n d a)
-  (define (update-previous-dist-node!-aux i n d a cont)
-    (if (equal? n (vector-ref (no-info-no i) cont))
-        (begin
-          (modify-dist! (vector-ref i cont) d)
-          (modify-previous! (vector-ref i cont) a))
-        (update-previous-dist-node!-aux i n d a (+ cont 1))))
-  (update-previous-dist-node!-aux i n d a 0))
+;sets the initial values for the cost table (infinity for everything but the initial node)
+(define (costs-hash graph start) 
+  (make-immutable-hash 
+   (map (lambda (n) (cons n (make-node (if (equal? start n) 0 +inf.0) '())))
+        (hash-keys graph))))
 
 
-
-
-
-(define target (make-bitmap 200 200))
-(define dc (new bitmap-dc% [bitmap target]))
-
-(for ([i 10])
-  (for ([j 10])
-    (send dc set-brush "black" 'solid)
-    (send dc draw-rectangle (+ 0 (* 10 i) 1) (+ 0 (* 10 j) 1) 10 10))) 
