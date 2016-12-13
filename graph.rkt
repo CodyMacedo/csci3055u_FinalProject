@@ -3,7 +3,7 @@
 (provide new-graph)
 
 (define graph-edges
-  '((a b 25) (a c 7) (a d 13) (c d 1) (c b 10) (c e 7) (b e 100) (b d 5) (d e 2)))
+  '((1 2 25) (1 3 7) (1 4 13) (3 4 1) (3 2 10) (3 5 7) (2 5 100) (2 4 5) (4 5 2)))
 
 
 (define (graph-undirected edges)

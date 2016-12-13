@@ -64,3 +64,7 @@
         (hash-keys graph))))
 
 
+(define graph new-graph)
+
+
+(dijkstra graph 1 5)
